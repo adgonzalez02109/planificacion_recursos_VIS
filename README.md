@@ -32,3 +32,7 @@
   Tecnologias: Las herramientas usadas fueron d3v5 javascript, css y html.
   
   Autor: Alvaro Diego Gonzalez Vesga
+  
+  Este proyecto se publica bajo la licencia de MIT.
+  
+  ![alt text](https://i.imgur.com/pghvTzb.png)
