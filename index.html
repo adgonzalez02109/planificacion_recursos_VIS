@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="slider.js"></script>
+<link rel="stylesheet" type="text/css" href="slider.css">
+<style>
+.grid line {
+  stroke: lightgrey;
+  stroke-opacity: 0.7;
+  shape-rendering: crispEdges;
+}
+
+.grid path {
+  stroke-width: 0;
+}
+</style>
+</head>
+
+<body>
+  <script>
+var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+
+
+csvo = d3.csv("https://www.datos.gov.co/api/views/g3mg-je4i/rows.csv?accessType=DOWNLOAD")
+    
+    csvo.then(function(result) {
+        
+        
+        let height = window.innerHeight-200;
+        let width = window.innerWidth-50;
+        let margin = ({top: 200, right: 30, bottom: 50, left: 120});
+let svg = d3.select("body").append("svg").attr("height", height).attr("width", width);
+
+csv2 = result;
+csv = [];
+index = 0;
+i = 0;
+
+
+
+while(index < 10000){
+    var inicial = parseInt(csv2[i]["PRESUPUESTO INICIAL"]);
+    var definitiva = parseInt(csv2[i]["PRESUPUESTO DEFINITIVO"]);
+    var diferencia = inicial-definitiva;
+    var anio = csv2[i]["AÑO"]
+        csv2[i]["diferencia"] = Math.abs(diferencia);
+    csv2[i]["PRESUPUESTO DEFINITIVO"] = definitiva;
+    csv2[i]["PRESUPUESTO INICIAL"] = inicial;
+    csv2[i]["tipo"] = (diferencia < 0)?"NEGATIVO":"POSITIVO";
+    if(inicial > 0 && definitiva > 0 && anio == 2016 && inicial < 25000000 && definitiva < 25000000){
+        
+        csv.push(csv2[i]);
+        index++;
+    }
+    i++;
+}
+
+
+let c = d3.scaleOrdinal() 
+    .domain(["POSITIVO","NEGATIVO"])
+        .range(["green","red"]);
+
+console.log(d3.set(csv.map(d=> d["tipo"])).values())
+    
+    let x = d3.scaleLinear()
+        .domain([0, d3.max(csv, d => d["PRESUPUESTO DEFINITIVO"])])
+            .range([margin.left, width - margin.right]);
+
+let y = d3.scaleLinear()
+    .domain([-d3.max(csv, d => d["diferencia"]), d3.max(csv, d => d["diferencia"])])
+        .range([height - margin.bottom, margin.top]);
+
+let r = d3.scaleLinear()
+    .domain(d3.extent(csv, d => d["diferencia"])).nice()
+        .range([2,90]);
+
+// gridlines in x axis function
+function make_x_gridlines() {        
+    return d3.axisBottom(x)
+        .ticks(20)
+        }
+
+// gridlines in y axis function
+function make_y_gridlines() {        
+    return d3.axisLeft(y)
+        .ticks(20)
+        }
+svg.append("g")            
+    .attr("class", "grid")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(make_x_gridlines()
+          .tickSize(-305)
+          .tickFormat("")
+         )
+    
+    // add the Y gridlines
+    svg.append("g")            
+        .attr("class", "grid")
+        .attr("transform", `translate(1500,0)`)
+        .call(make_y_gridlines()
+              .tickSize(width-margin.right-75)
+              .tickFormat("")
+             )
+        let  xAxis = g => g
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.append("text")
+                .attr("x", width/2)
+                .attr("y", 40)
+                .attr("fill", "#000")
+                .attr("font-size","10pt")
+                .style("text-anchor", "middle")
+                .text("PRESUPUESTO INICIAL"));
+
+let  yAxis = g => g
+    .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y))
+        .call(g => g.select(".domain").remove())
+        .call(g => g.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -100 )
+        .attr("x",height/2)
+        .attr("fill", "#000")
+        .attr("font-size","10pt")
+        .style("text-anchor", "middle")
+        .text("VALOR DE DIFERENCIA ENTRE INICIAL Y DEFINITIVO")); 
+
+svg.append("g")
+    .call(xAxis);
+svg.append("g")
+    .call(yAxis);
+let dot = svg.selectAll("circle")
+    .data(csv)
+        .enter().append("circle")
+            .attr("fill", "none")
+                .attr("stroke-width", 1.5)
+                    .attr("stroke", d => c(d["tipo"]))
+                        .attr("cx", d => x(d["PRESUPUESTO INICIAL"]))
+                            .attr("cy",350)
+                                .attr("r", d => r(d["diferencia"]));
+
+svg.append("circle")
+    .attr("cx", (width/2)-75)
+    .attr("cy", 170)
+    .attr("r", 20)
+    .style("fill", "green")
+    .on("click",d => {
+        let c = d3.scaleOrdinal() 
+        .domain(["POSITIVO","NEGATIVO"])
+        .range(["green","ligthgray"]);
+        dot.attr("fill", "none")
+        .attr("stroke-width", 1.5)
+        .attr("stroke", d => c(d["tipo"]))
+        .attr("cx", d => x(d["PRESUPUESTO INICIAL"]))
+        .attr("cy",328)
+        .attr("r", d => r(d["diferencia"]));
+    });
+        svg.append("circle")
+        .attr("cx", (width/2))
+        .attr("cy", 170)
+        .attr("r", 20)
+        .style("fill", "red")
+        .on("click",d => {
+        let c = d3.scaleOrdinal() 
+        .domain(["POSITIVO","NEGATIVO"])
+        .range(["ligthgray","red"]);
+        dot.attr("fill", "none")
+        .attr("stroke-width", 1.5)
+        .attr("stroke", d => c(d["tipo"]))
+        .attr("cx", d => x(d["PRESUPUESTO INICIAL"]))
+        .attr("cy",328)
+        .attr("r", d => r(d["diferencia"]));
+    });
+        svg.append("circle")
+        .attr("cx", (width/2)+75)
+        .attr("cy", 170)
+        .attr("r", 20)
+        .style("fill", "ligthgray")
+        .on("click",d => {
+        let c = d3.scaleOrdinal() 
+        .domain(["POSITIVO","NEGATIVO"])
+        .range(["green","red"]);
+        dot.attr("fill", "none")
+        .attr("stroke-width", 1.5)
+        .attr("stroke", d => c(d["tipo"]))
+        .attr("cx", d => x(d["PRESUPUESTO INICIAL"]))
+        .attr("cy",328)
+        .attr("r", d => r(d["diferencia"]));
+    });
+        
+    });
+  </script>
+  <h1>¿Que tan bueno es el estado planeando recursos?</h1>
+  Este visualiación corresponde a la Información del Formulario Único Territorial sobre la Categoría de Gastos de Inversión proveido por la Contaduría General de la Nación, y muestra la diferencia entre el PRESUPUESTO INICIAL y el PRESUPUESTO DEFINTIVO en un subconjunto de 10000 proyectos reportados. En color rojo se ven los que tuvieron un PRESUPUESTO DEFINITIVO mayor a PRESUPUESTO INICIAL y en color verde se pueden ver los que tuvieron el PRESUPUESTO INICIAL mayor al PRESUPUESTO DEFINITIVO. Esta visualización evidencia la gran diferencia entre lo que se proyecta gastar y lo que se gasta en definitiva especialmente en los proyectos de presupuestos menores a los dos millones y en los cuales se terminan gastando en lo casos mas grandes hasta casi 10 millones.
+  Los circulos de colores en la parte superior de la visualización permiten filtrar los datos y el circulo grid muestra ambas categorias.
+  <br><br><br>
+  WHAT.
+  <br>
+  El tipo de datos del que proviene la visualización es tabla, y fue extraida de la siguiente URL: https://www.datos.gov.co/api/views/g3mg-je4i/rows.csv?accessType=DOWNLOAD
+  <br>
+  Los datos usados para esta visualización fueron:
+  <br>
+  1. PRESUPUESTO INICIAL, PRESUPUESTO DEFINITIVO: datos ordenados y secuenciales que corresponden a valores en COP.
+  <br>
+  2. diferencia: dato ordenado y divergente debido a que la diferencia puede ser positiva o negativa, aunque para la visualización se tomó el valor absoluto para asociarlo al radio de los circulos.
+  <br><br><br>
+  WHY.
+  <br>
+  Locate trends and outliners: A partir de los filtros de los circulos de la parte superior se puede preguntar por los gastos con diferencias positivas o negativas (target known) y se visualiza en que margen se manejan (location unknown)
+  <br>
+  Browse topology: Teniendo en cuenta la superposición de circulos y el radio de los mismos se pueden buscar topologias respecto a la dispersión de los gastos.
+  <br>Summarize features: La visualización pretende resumir en una sola vista el estado de los gastos mostrandolos todos.
+  <br><br><br>
+  HOW.
+  <br>
+  Las marcas de la visualización son los puntos, que en este caso no tienen fill, y los canales son la ubicación espacial respecto al eje X, el area de los circulos y los colores.
+  <br>
+  Express by size and color hue: Permite expresar por medio del color y los tamaños la diferencia entre lo presupuestado inicialmente y lo definitivo.
+  <br>
+  Superimpose: Superpone los datos de las diferencias negativas y positivas.
+</body>
